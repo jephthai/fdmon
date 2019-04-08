@@ -70,7 +70,7 @@ class Descriptor
   end
 end
 
-def banner
+def banner(pid, com, arg)
   system("clear")
   puts ""
   puts "Josh's Process #{$red}F#{$reset}ile #{$red}D#{$reset}escriptor #{$red}Mon#{$reset}itor (#{$red}fdmon#{$reset})"
@@ -91,7 +91,7 @@ end
 if $0 == __FILE__
   
   if(ARGV.length != 1)
-    puts "usage: pswatch.rb <pid>"
+    puts "usage: #{$0} <pid>"
     exit(1)
   end
 
@@ -99,16 +99,20 @@ if $0 == __FILE__
   com = File.read("/proc/#{pid}/comm").strip
   arg = File.read("/proc/#{pid}/cmdline").split(/\x00/)[1..-1].join(" ")
 
-  while true
-    fds = []
-    Dir.new("/proc/#{pid}/fd").each do |entry|
-      fds << Descriptor.new(pid,entry) unless [".", ".."].member? entry
+  begin
+    while true
+      fds = []
+      Dir.new("/proc/#{pid}/fd").each do |entry|
+        fds << Descriptor.new(pid,entry) unless [".", ".."].member? entry
+      end
+      banner(pid, com, arg)
+      fds.each do |fd|
+        printf(" %6.2f%% %-10s %-5d %-15d %-15d    %s\n",
+               fd.prog, fd.meter, fd.num, fd.pos, fd.size, File.basename(fd.target))
+      end
+      sleep 0.5
     end
-    banner
-    fds.each do |fd|
-      printf(" %6.2f%% %-10s %-5d %-15d %-15d    %s\n",
-             fd.prog, fd.meter, fd.num, fd.pos, fd.size, File.basename(fd.target))
-    end
-    sleep 0.5
+  rescue Exception => e
+    puts("Exiting loop: #{e.to_s}")
   end
 end
